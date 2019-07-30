@@ -20,7 +20,7 @@ require('electron').app.on('ready', () => {
   //   .catch(err => {
   //     console.log('Unable to install `vue-devtools`: \n', err)
   //   })
-  BrowserWindow.addDevToolsExtension('G:/practice/gitrepo/vue-devtools/shells/chrome')
+  // BrowserWindow.addDevToolsExtension('G:/practice/gitrepo/vue-devtools/shells/chrome')
 })
 
 // Require `main` process to boot app
