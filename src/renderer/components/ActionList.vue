@@ -1,8 +1,8 @@
 <template>
   <div style="height: 200px">
     <el-table :data="tableData" border style="width: 100%"
-    row-key="taskid" :cell-class-name="cellClass"
-    :tree-props="{children: 'children', hasChildren: 'hasChildren'}">
+    row-key="id" :cell-class-name="cellClass"
+    :tree-props="{children: 'actionLogs', hasChildren: 'hasChildren'}">
       <el-table-column align="center" prop="content" label="事项">
         <template slot-scope="scope">
           <el-input v-model="scope.row.content" :disabled="scope.row.taskid != ''"></el-input>
@@ -18,13 +18,14 @@
       </el-table-column>
       <el-table-column align="center" prop="status" label="当前状态">
         <template slot-scope="scope">
-          <el-input v-model="scope.row.status" type="textarea" autosize></el-input>
+          <el-input v-model="scope.row.status" v-show="!scope.row.isChild" type="textarea" autosize></el-input>
+          <span v-show="scope.row.isChild">{{scope.row.status}}</span>
         </template>
       </el-table-column>
       <el-table-column align="center" prop="updateTime" label="更新时间" width="90">
         <template slot-scope="scope">{{scope.row.updateDate | formatDate}}</template>
       </el-table-column>
-      <el-table-column align="center" label="操作" width="90">
+      <el-table-column align="center" label="操作" width="150">
         <template slot-scope="scope">
           <el-button v-show="!scope.row.isChild" @click="save(scope.row)" type="text" size="small">保存</el-button>
           <el-button v-show="!scope.row.isChild" @click="done(scope.row)" type="text" size="small">完成</el-button>
@@ -37,17 +38,18 @@
 
 <script>
 import actionlistApi from '../api/ActionList'
-import objUtils from '../utils/obj'
+// import objUtils from '../utils/obj'
 export default {
   name: 'action-list',
   data () {
     return {
       today: new Date(),
-      listData: actionlistApi.fetch()
+      listData: [] // actionlistApi.fetch()
     }
   },
   filters: {
     formatDate: function (value) {
+      if (!value) return ''
       let date = new Date(value)
       let y = date.getFullYear()
       let MM = date.getMonth() + 1
@@ -64,6 +66,12 @@ export default {
     }
   },
   methods: {
+    fetch: function () {
+      let vm = this
+      actionlistApi.fetch().then(function (data) {
+        vm.listData = data
+      })
+    },
     add: function () {
       let data = {}
       data.content = this.newData[0].content
@@ -82,20 +90,17 @@ export default {
       this.listData = actionlistApi.create(row)
     },
     done: function (row) {
+      let vm = this
       row.status = 'done'
-      delete row.children
-      this.listData = actionlistApi.create(row)
+      delete row.actionLogs
+      actionlistApi.create(row).then(function () { vm.fetch() })
     },
     cellClass: function (row, column, rowIndex, columnIndex) {
       if (row.columnIndex === 0) { return 'indent' }
-      // return 'testClass'
     }
   },
   computed: {
     tableData: function () {
-      // let tabledata = actionlistApi.fetch()
-      let tabledata = objUtils.clone(this.listData)
-      // let tabledata = this.listData
       let empty = {
         taskid: '',
         content: '',
@@ -104,9 +109,35 @@ export default {
         deadline: '',
         updateDate: this.today
       }
+      let vm = this
+      let tabledata = []
+      for (let item in vm.listData) {
+        let data = vm.listData[item]
+        if (data.actionLogs && data.actionLogs.length > 0) {
+          for (let i in data.actionLogs) {
+            let log = data.actionLogs[i]
+            log.id = data.id + '_' + log.id
+            log.isChild = true
+          }
+        }
+        tabledata.push(data)
+      }
       tabledata.push(empty)
+      // if (this.listData.length > 0) {
+      //   tabledata = objUtils.clone(this.listData)
+      //   if (tabledata.push) {
+      //     tabledata.push(empty)
+      //   }
+      // }
       return tabledata
     }
+  },
+  mounted () {
+    let vm = this
+    actionlistApi.fetch().then(function (data) {
+      vm.listData = data
+      console.log(data)
+    })
   }
 }
 </script>
