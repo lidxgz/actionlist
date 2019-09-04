@@ -33,6 +33,16 @@
         </template>
       </el-table-column>
     </el-table>
+    <el-pagination
+            :hide-on-single-page="true"
+            :total="totalElements"
+            :current-page="pageNum"
+            :page-size="pageSize"
+            @current-change="fetch"
+            @prev-click="fetch"
+            @next-click="fetch"
+            layout="prev, pager, next">
+    </el-pagination>
   </div>
 </template>
 
@@ -44,7 +54,10 @@ export default {
   data () {
     return {
       today: new Date(),
-      listData: [] // actionlistApi.fetch()
+      listData: [], // actionlistApi.fetch()
+      pageNum: 0,
+      totalElements: 0,
+      pageSize: 5
     }
   },
   filters: {
@@ -66,10 +79,13 @@ export default {
     }
   },
   methods: {
-    fetch: function () {
+    fetch: function (page) {
       let vm = this
-      actionlistApi.fetch().then(function (data) {
-        vm.listData = data
+      actionlistApi.fetch(page).then(function (data) {
+        vm.listData = data.content
+        vm.pageNum = data.pageNum + 1
+        vm.pageSize = data.pageSize
+        vm.totalElements = data.totalElements
       })
     },
     add: function () {
@@ -84,10 +100,15 @@ export default {
       this.newData[0].status = ''
       this.newData[0].deadline = ''
     },
-    save: function (row) {
+    save: async function (row) {
+      if (row.taskid === '') row.status = '新建'
       row.updateDate = new Date()
-      delete row.children
-      this.listData = actionlistApi.create(row)
+      delete row.actionLogs
+      let data = await actionlistApi.create(row)
+      this.listData = data.content
+      this.pageNum = data.pageNum + 1
+      this.pageSize = data.pageSize
+      this.totalElements = data.totalElements
     },
     done: function (row) {
       let vm = this
@@ -111,6 +132,7 @@ export default {
       }
       let vm = this
       let tabledata = []
+      console.log(vm.listData)
       for (let item in vm.listData) {
         let data = vm.listData[item]
         if (data.actionLogs && data.actionLogs.length > 0) {
@@ -123,6 +145,7 @@ export default {
         tabledata.push(data)
       }
       tabledata.push(empty)
+      console.log(tabledata)
       // if (this.listData.length > 0) {
       //   tabledata = objUtils.clone(this.listData)
       //   if (tabledata.push) {
@@ -135,8 +158,10 @@ export default {
   mounted () {
     let vm = this
     actionlistApi.fetch().then(function (data) {
-      vm.listData = data
-      console.log(data)
+      vm.listData = data.content
+      vm.pageNum = data.pageNum + 1
+      vm.pageSize = data.pageSize
+      vm.totalElements = data.totalElements
     })
   }
 }
